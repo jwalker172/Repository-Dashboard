@@ -1,0 +1,21 @@
+.container {
+    display: flex;
+    gap: 20px;
+}
+
+.well-list {
+    width: 200px;
+    background-color: #f0f0f0;
+    padding: 10px;
+}
+
+.well-details {
+    flex: 1;
+    padding: 10px;
+    background-color: #fafafa;
+}
+
+input {
+    width: 100%;
+    margin-bottom: 5px;
+}

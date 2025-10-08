@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Well Referral Dashboard</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 0; padding: 0;
+    display: flex;
+    height: 100vh;
+  }
+
+  #left_panel {
+    width: 250px;
+    border-right: 1px solid #ccc;
+    overflow-y: auto;
+  }
+
+  #right_panel {
+    flex-grow: 1;
+    padding: 15px;
+    overflow-y: auto;
+  }
+
+  #well_list {
+    padding: 0;
+    margin: 0;
+    list-style: none;
+  }
+
+  .well-list-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+  }
+
+  .well-list-item:hover {
+    background-color: #f0f0f0;
+  }
+
+  .well-list-item.selected {
+    background-color: #b3d9ff;
+    font-weight: bold;
+  }
+
+  label {
+    display: block;
+    margin-top: 10px;
+    font-weight: bold;
+  }
+
+  input[type=text], select, textarea {
+    width: 100%;
+    padding: 6px;
+    margin-top: 3px;
+    box-sizing: border-box;
+  }
+
+  textarea {
+    resize: vertical;
+  }
+
+  #top_controls {
+    padding: 10px;
+    border-bottom: 1px solid #ccc;
+    background-color: #fafafa;
+  }
+
+  #well_title_top, #well_title_bottom {
+    font-size: 18px;
+    font-weight: bold;
+    margin-top: 5px;
+    margin-bottom: 15px;
+  }
+
+  #save_well, #new-well-btn {
+    margin-top: 20px;
+    padding: 10px 15px;
+    font-size: 16px;
+    cursor: pointer;
+  }
+
+  #save_well2, #new-well-btn {
+    margin-top: 20px;
+    padding: 10px 15px;
+    font-size: 16px;
+    cursor: pointer;
+  }
+
+
+  /* New Two-Column Layout for Well Fields */
+  .well-fields-container {
+    display: flex;
+    gap: 30px;
+    justify-content: space-between;
+  }
+
+  .left-fields, .right-fields {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+</style>
+</head>
+<body>
+
+<div id="left_panel">
+  <div id="top_controls">
+    <label for="sheet_select">Select Sheet</label>
+    <select id="sheet_select">
+      <option value="">-- Select Sheet --</option>
+      <option value="BP-P">BP-P</option>
+      <option value="FR-FZ">FR-FZ</option>
+      <option value="GYL-ME">GYL-ME</option>
+      <option value="LBTF">LBTF</option>
+      <option value="PFC">PFC</option>
+      <option value="PSC">PSC</option>
+    </select>
+
+    <label for="pe_re_select" style="margin-top: 15px;">Select PE/RE</label>
+    <select id="pe_re_select" disabled>
+      <option value="">-- Select PE/RE --</option>
+    </select>
+		
+	<div id="total_gain" style="margin-top: 10px; color: red; font-weight: bold;">
+  Total Gain/bopd: --
+	</div>
+  </div>
+
+  <!-- New Well Modal -->
+  <div id="new-well-modal" style="display:none; border:1px solid black; padding:20px; background-color:white; position:absolute; top:50px; right:20px; z-index:1000; width: 1000px;">
+    <h3>Add New Well Deferred</h3>
+    <form id="new-well-form" style="display: flex; gap: 30px;">
+      <div class="left-fields">
+        <label>Date Deferred: <input type="text" name="Date Deferred"></label>
+        <label>Well Name: <input name="Well" id="well-input" type="text" /></label>
+        <label>PE/RE: <select name="PE/RE"></select></label>
+        <label>Well Type: <select name="Well Type"></select></label>
+        <label>Field: <input type="text" name="Field"></label>
+        <label>TB: <input type="text" name="TB"></label>
+        <label>Potential/bopd: <input type="text" name="Potential/bopd"></label>
+        <label>Gain/bopd: <input type="text" name="Gain/bopd"></label>
+        <label>Comments: <textarea name="Comments" rows="3"></textarea></label>
+      </div>
+
+      <div class="right-fields">
+        <label>Assessment Status: <select name="Assessment Status"></select></label>
+        <label>Category: <select name="Category"></select></label>
+        <label>Well Analyst: <select name="Well Analyst"></select></label>
+        <label>Current Responsibilities: <select name="Current Responsibilities"></select></label>
+        <label>Servicing Status: <select name="Servicing Status"></select></label>
+        <label>Last Production date: <input type="text" name="Last Production date"></label>
+        <label>Days Off: <input type="text" name="Days Off"></label>
+        <label>Est Loss: <input type="text" name="Est Loss"></label>
+        <label>Additional Info: <input type="text" name="Additional Info"></label>
+      </div>
+    </form>
+    <button type="submit" form="new-well-form">Submit</button>
+    <button type="button" onclick="document.getElementById('new-well-modal').style.display='none'">Cancel</button>
+  </div>
+
+  <ul id="well_list"></ul>
+</div>
+
+<div id="right_panel">
+  <h2>Well Deferrals Dashboard</h2>
+  <div style="display: flex; justify-content: flex-end;">
+    <button id="delete_well"
+            onclick="deleteWell(wells[selectedWellIndex]?.Well)"
+            style="background-color: red; color: white; border: none; padding: 6px 12px; border-radius: 4px;">
+      Delete
+    </button>
+  </div>
+
+  <div style="display: flex; justify-content: center; align-items: center;">
+    <button id="move_to_resolved"
+            onclick="MoveWell(wells[selectedWellIndex]?.Well)"
+            style="background-color: green; color: white; border: none; padding: 6px 12px; border-radius: 4px;">
+      Well Resolved
+    </button>
+  </div>
+
+  <button id="historyButton" style="display:none;">View History</button>
+  <button id="save_well">Save Well</button>
+  <button id="new-well-btn">Add New Well</button>
+
+  <div id="well_title_top"></div>
+
+  <div id="historyModal" style="display:none;">
+    <div>
+      <h3>Comment History</h3>
+      <ul id="commentList"></ul>
+      <button onclick="closeHistory()">Close</button>
+    </div>
+  </div>
+
+  <!-- WELL FIELDS -->
+  <div id="well_fields">
+    <div class="well-fields-container">
+    </div>
+  </div>
+
+  <div id="well_title_bottom"></div>
+  <button id="save_well2">Save Well</button>
+  <button id="new-well-btn">Add New Well</button>
+</div>
+
+	
+
+
+<script>
+  let wells = [];
+  let selectedWellIndex = null;
+  let dropdownOptions = {}; // Will hold options from Lists sheet
+
+  const wellList = document.getElementById('well_list');
+  const wellFields = document.getElementById('well_fields');
+  const sheetSelect = document.getElementById('sheet_select');
+  const peReSelect = document.getElementById('pe_re_select');
+  const wellTitleTop = document.getElementById('well_title_top');
+  const wellTitleBottom = document.getElementById('well_title_bottom');
+  const rightPanel = document.getElementById('right_panel');
+  const addWellBtn = document.getElementById('add-well-btn');
+  const newWellModal = document.getElementById('new-well-modal');
+  const newWellForm = document.getElementById('new-well-form');
+
+  function clearWells() {
+    wells = [];
+    selectedWellIndex = null;
+    wellList.innerHTML = '';
+    wellFields.innerHTML = '';
+    wellTitleTop.textContent = '';
+    wellTitleBottom.textContent = '';
+    rightPanel.style.backgroundColor = 'white';
+  }
+
+	function deleteWell(wellName) {
+  const sheetSelect = document.getElementById('sheet_select'); // ensure this matches your DOM
+  const sheet = sheetSelect.value;
+
+  if (!confirm(`Are you sure you want to delete "${wellName}"?`)) return;
+
+  fetch('/move_to_delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sheet: sheet, well_name: wellName }) // ✅ match Python keys
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      alert('Well deleted successfully.');
+      fetchWells(sheet, peReSelect.value); // refresh well list
+    } else {
+      alert('Failed to delete well: ' + (data.error || 'Unknown error'));
+    }
+  })
+  .catch(error => alert('Error deleting well: ' + error));
+}
+
+
+
+
+		function MoveWell(wellName) {
+  const sheetSelect = document.getElementById('sheet_select'); // ensure this matches your DOM
+  const sheet = sheetSelect.value;
+
+  if (!confirm(`Are you sure you want to remove "${wellName}"?`)) return;
+
+  fetch('/move_to_resolved', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sheet: sheet, well_name: wellName }) // ✅ match Python keys
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      alert('Well removed successfully.');
+      fetchWells(sheet, peReSelect.value); // refresh well list
+    } else {
+      alert('Failed to remove well: ' + (data.error || 'Unknown error'));
+    }
+  })
+  .catch(error => alert('Error removing well: ' + error));
+}
+		
+		
+		
+
+  function fetchDropdownOptions(sheet) {
+    return fetch('/get_dropdown_options', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({sheet}),
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.error) {
+        alert('Error fetching dropdown options: ' + data.error);
+        dropdownOptions = {};
+      } else {
+        dropdownOptions = data;
+      }
+    })
+    .catch(err => {
+      alert('Failed to fetch dropdown options: ' + err);
+      dropdownOptions = {};
+    });
+  }
+  
+  
+  
+  
+
+  function displayWellList() {
+    wellList.innerHTML = '';
+    wells.forEach((well, index) => {
+      const li = document.createElement('li');
+      li.textContent = well['Well'] || 'Unnamed Well';
+      li.className = 'well-list-item';
+      if (index === selectedWellIndex) li.classList.add('selected');
+
+      // Color based on Status
+      if (well['Status']?.toLowerCase() === 'to remove from list') {
+        li.style.backgroundColor = '#ffe5e5'; // light red
+      } else if (well['Status']?.toLowerCase() === 'in progress') {
+        li.style.backgroundColor = '#e3f8e3'; // light green
+      } else {
+        li.style.backgroundColor = '';
+      }
+
+      li.onclick = () => {
+        selectedWellIndex = index;
+        displayWellDetails(well);
+        displayWellList();
+      };
+      wellList.appendChild(li);
+    });
+  }
+  
+  
+  
+  
+  
+  
+		function onWellSelect(wellName) {
+		selectedWellIndex = wellName;
+		document.getElementById('historyButton').style.display = 'inline-block';
+	}
+
+	document.getElementById('historyButton').addEventListener('click', function () {
+		if (!selectedWellIndex) return;
+
+		fetch('/get_history', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ well_name: selectedWellIndex })
+		})
+		.then(response => response.json())
+		.then(data => {
+			if (data.comments && data.comments.length > 0) {
+				const commentList = document.getElementById('commentList');
+				commentList.innerHTML = '';
+				data.comments.forEach(comment => {
+					const li = document.createElement('li');
+					li.textContent = comment;
+					commentList.appendChild(li);
+				});
+				document.getElementById('historyModal').style.display = 'block';
+			} else {
+				alert('No comments found for this well.');
+			}
+		})
+		.catch(err => {
+			alert('Error fetching history: ' + err.message);
+		});
+	});
+
+
+
+
+
+
+	function closeHistory() {
+		document.getElementById('historyModal').style.display = 'none';
+	}
+
+
+
+
+
+
+
+
+  function displayWellDetails(well) {
+  wellFields.innerHTML = '';
+
+  const wellName = well['Well']?.trim();
+  wellTitleTop.textContent = wellName || 'Unnamed Well';
+  wellTitleBottom.textContent = wellName || 'Unnamed Well';
+
+  // Color right panel based on Status
+  const status = well['Status']?.trim().toLowerCase();
+  if (status === 'to remove from list') {
+    rightPanel.style.backgroundColor = '#ffe5e5';
+  } else if (status === 'in progress') {
+    rightPanel.style.backgroundColor = '#e3f8e3';
+  } else {
+    rightPanel.style.backgroundColor = 'white';
+  }
+
+  // Create the container structure
+  const container = document.createElement('div');
+  container.className = 'well-fields-container';
+
+  const leftFields = document.createElement('div');
+  leftFields.className = 'left-fields';
+
+  const rightFields = document.createElement('div');
+  rightFields.className = 'right-fields';
+
+  container.appendChild(leftFields);
+  container.appendChild(rightFields);
+  wellFields.appendChild(container);
+
+  // Status dropdown
+  const labelStatus = document.createElement('label');
+  labelStatus.textContent = 'Status';
+
+  const selectStatus = document.createElement('select');
+  ['', 'In Progress', 'To Remove From List'].forEach(opt => {
+    const option = document.createElement('option');
+    option.value = opt;
+    option.textContent = opt;
+    if (opt === well['Status']) option.selected = true;
+    selectStatus.appendChild(option);
+  });
+
+  selectStatus.onchange = () => {
+    wells[selectedWellIndex]['Status'] = selectStatus.value;
+    displayWellDetails(wells[selectedWellIndex]);
+    displayWellList();
+  };
+
+  leftFields.appendChild(labelStatus);
+  leftFields.appendChild(selectStatus);
+
+  const dropdownFields = [
+    "Assessment Status",
+    "Well Type",
+    "Category",
+    "PE/RE",
+    "Well Analyst",
+    "Current Responsibilities",
+    "Servicing Status"
+  ];
+  
+  
+
+  const keys = Object.keys(well).filter(k => k !== 'Status');
+  keys.forEach((key, index) => {
+    const label = document.createElement('label');
+    label.textContent = key;
+
+    let fieldElement;
+
+		if (dropdownFields.includes(key) && dropdownOptions[key]) {
+	  // Log PE/RE values for debugging
+	  if (key === 'PE/RE') {
+		console.log('Dropdown options for PE/RE:', dropdownOptions[key]);
+		console.log('Well PE/RE value:', well[key]);
+	  }
+
+	  const select = document.createElement('select');
+	  const emptyOption = document.createElement('option');
+	  emptyOption.value = '';
+	  emptyOption.textContent = '-- Select --';
+	  select.appendChild(emptyOption);
+
+	  dropdownOptions[key].forEach(opt => {
+		const option = document.createElement('option');
+		option.value = opt;
+		option.textContent = opt;
+
+		// Normalize for comparison
+		if (opt.trim().toLowerCase() === (well[key]?.trim().toLowerCase() || '')) {
+		  option.selected = true;
+		}
+
+		select.appendChild(option);
+	  });
+
+
+      select.onchange = () => {
+        wells[selectedWellIndex][key] = select.value;
+        if (key === 'Well') {
+          displayWellList();
+          wellTitleTop.textContent = select.value || 'Unnamed Well';
+          wellTitleBottom.textContent = select.value || 'Unnamed Well';
+        }
+      };
+
+      fieldElement = select;
+    } else {
+      if (
+        key.toLowerCase().includes('comments') ||
+        key.toLowerCase().includes('info') ||
+        (well[key] && well[key].toString().length > 60)
+      ) {
+        fieldElement = document.createElement('textarea');
+        fieldElement.rows = 3;
+      } else {
+        fieldElement = document.createElement('input');
+        fieldElement.type = 'text';
+      }
+
+      fieldElement.value = well[key] ?? '';
+      fieldElement.oninput = () => {
+        wells[selectedWellIndex][key] = fieldElement.value;
+        if (key === 'Well') {
+          displayWellList();
+          wellTitleTop.textContent = fieldElement.value || 'Unnamed Well';
+          wellTitleBottom.textContent = fieldElement.value || 'Unnamed Well';
+        }
+      };
+    }
+
+    // Alternate placing fields left/right
+    const targetColumn = index % 2 === 0 ? leftFields : rightFields;
+    targetColumn.appendChild(label);
+    targetColumn.appendChild(fieldElement);
+  });
+}
+
+
+  function fetchWells(sheet, peRe) {
+    if (!sheet || !peRe) {
+      clearWells();
+      return;
+    }
+    fetch('/get_wells', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({sheet, pe_re: peRe}),
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.error) {
+        alert(data.error);
+        return;
+      }
+      wells = data;
+      selectedWellIndex = wells.length ? 0 : null;
+      displayWellList();
+      if (selectedWellIndex !== null) displayWellDetails(wells[selectedWellIndex]);
+    })
+    .catch(err => {
+      alert('Failed to fetch wells: ' + err);
+    });
+  }
+
+  // On sheet select, fetch dropdown options and PE/RE list
+  sheetSelect.addEventListener('change', () => {
+    const sheet = sheetSelect.value;
+    peReSelect.innerHTML = '<option value="">-- Select PE/RE --</option>';
+    peReSelect.disabled = !sheet;
+    clearWells();
+
+    if (!sheet) return;
+	
+	  // ✅ Fetch and show Total Gain from backend
+  fetch('/get_total_gain', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({sheet}),
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.error) {
+      document.getElementById('total_gain').textContent = 'Error loading Total Gain';
+    } else {
+      document.getElementById('total_gain').textContent = `Total Gain/bopd: ${data.total_gain}`;
+    }
+  })
+  .catch(() => {
+    document.getElementById('total_gain').textContent = 'Error loading Total Gain';
+  });
+  
+    fetchDropdownOptions(sheet).then(() => {
+      fetch('/get_pe_re_list', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({sheet}),
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.error) {
+          alert(data.error);
+          return;
+        }
+        data.forEach(pe => {
+          const option = document.createElement('option');
+          option.value = pe;
+          option.textContent = pe;
+          peReSelect.appendChild(option);
+        });
+      })
+      .catch(err => {
+        alert('Failed to fetch PE/RE list: ' + err);
+      });
+    });
+  });
+
+  // On PE/RE select, fetch wells
+  peReSelect.addEventListener('change', () => {
+    fetchWells(sheetSelect.value, peReSelect.value);
+  });
+
+  // Save well button
+	document.getElementById('save_well').addEventListener('click', () => {
+	  if (selectedWellIndex === null) {
+		alert('No well selected');
+		return;
+	  }
+	 
+	  const sheet = sheetSelect.value;
+	  const well = wells[selectedWellIndex];
+	 
+	  // Collect any unsaved input values from the DOM (for textareas/inputs)
+	  const inputs = document.querySelectorAll('#well_fields input, #well_fields textarea, #well_fields select');
+	  inputs.forEach(input => {
+		const label = input.previousSibling?.textContent?.trim();
+		if (label) {
+		  well[label] = input.value;
+		}
+	  });
+	 
+	  // Save the well via POST
+	  fetch('/save_well', {
+		method: 'POST',
+		headers: {'Content-Type': 'application/json'},
+		body: JSON.stringify({ sheet, Well: well})
+	  })
+	  .then(res => res.json())
+	  .then(data => {
+		if (data.error) {
+		  alert('Failed to save well: ' + data.error);
+		} else {
+		  alert('Well saved successfully');
+		  displayWellList();
+		}
+	  })
+	  .catch(err => {
+		alert('Failed to save well: ' + err);
+	  });
+	});
+	
+	
+	// Save well button 2
+	document.getElementById('save_well2').addEventListener('click', () => {
+	  if (selectedWellIndex === null) {
+		alert('No well selected');
+		return;
+	  }
+	 
+	  const sheet = sheetSelect.value;
+	  const well = wells[selectedWellIndex];
+	 
+	  // Collect any unsaved input values from the DOM (for textareas/inputs)
+	  const inputs = document.querySelectorAll('#well_fields input, #well_fields textarea, #well_fields select');
+	  inputs.forEach(input => {
+		const label = input.previousSibling?.textContent?.trim();
+		if (label) {
+		  well[label] = input.value;
+		}
+	  });
+	 
+	  // Save the well via POST
+	  fetch('/save_well2', {
+		method: 'POST',
+		headers: {'Content-Type': 'application/json'},
+		body: JSON.stringify({ sheet, Well: well})
+	  })
+	  .then(res => res.json())
+	  .then(data => {
+		if (data.error) {
+		  alert('Failed to save well: ' + data.error);
+		} else {
+		  alert('Well saved successfully');
+		  displayWellList();
+		}
+	  })
+	  .catch(err => {
+		alert('Failed to save well: ' + err);
+	  });
+	});
+	
+	
+	
+
+async function loadDropdownOptions(sheetName) {
+  try {
+    const res = await fetch('/get_dropdown_options', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sheet: sheetName }) // pass sheet name if you want to filter by sheet
+    });
+    const optionsData = await res.json();
+
+    // For each dropdown, populate the <select>
+    const dropdownNames = [
+      "Assessment Status",
+      "Well Type",
+      "Category",
+      "PE/RE",
+      "Well Analyst",
+      "Current Responsibilities",
+      "Servicing Status"
+    ];
+
+    dropdownNames.forEach(name => {
+      const selectElem = document.querySelector(`select[name="${name}"]`);
+      if (!selectElem) return;
+
+      // Clear existing options
+      selectElem.innerHTML = '';
+
+      // Add a blank option
+      const blankOption = document.createElement('option');
+      blankOption.value = '';
+      blankOption.textContent = '-- Select --';
+      selectElem.appendChild(blankOption);
+
+      // Add options from the API response
+      if (optionsData[name]) {
+        optionsData[name].forEach(opt => {
+          const option = document.createElement('option');
+          option.value = opt;
+          option.textContent = opt;
+          selectElem.appendChild(option);
+        });
+      }
+    });
+  } catch (error) {
+    console.error('Failed to load dropdown options:', error);
+  }
+}
+
+// Call this function once page is ready or modal is opened
+// Pass the sheet name your app uses, e.g. "BP-P"
+loadDropdownOptions('BP-P');
+
+document.getElementById("new-well-btn").addEventListener("click", () => {
+    document.getElementById("new-well-modal").style.display = "block";
+});
+  
+	document.getElementById("new-well-form").addEventListener("submit", function(e) {
+    e.preventDefault(); // Prevent default form submission
+
+    const selectedSheet = sheetSelect.value;
+    if (!selectedSheet) {
+        alert("Please select a sheet before adding a new well.");
+        return;
+    }
+
+    const formData = new FormData(this);
+    const wellData = {
+        "Well": formData.get("Well") || "New Well",
+        "Status": "In Progress",
+        "Date Deferred": formData.get("Date Deferred"), 
+        "Well Type": formData.get("Well Type"),
+        "Field": formData.get("Field"), 
+        "TB": formData.get("TB"),     
+        "PE/RE": formData.get("PE/RE"),
+        "Well Analyst": formData.get("Well Analyst"),
+        "Comments": formData.get("Comments"), 
+        "Current Responsibilities": formData.get("Current Responsibilities"),
+        "Assessment Status": formData.get("Assessment Status"),
+        "Category": formData.get("Category"),
+       "Servicing Status": formData.get("Servicing Status"),
+       "Last Production date": formData.get("Last Production date"),
+       "Days Off": formData.get("Days Off"),
+       "Est Loss": formData.get("Est Loss"),
+       "Additional Info": formData.get("Additional Info"),
+	   "Potential/bopd": formData.get("Potential/bopd"),
+	   "Gain/bopd": formData.get("Gain/bopd"),
+    };
+
+    fetch('/add_well', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sheet: selectedSheet, well: wellData })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById("new-well-modal").style.display = "none";
+            fetchWells(sheetSelect.value, peReSelect.value); // Refresh the well list
+        } else {
+            alert("Failed to add well: " + (data.error || "Unknown error"));
+        }
+    })
+    .catch(err => {
+        alert("Failed to add well: " + err);
+    });
+});
+
+
+
+</script>
+
+</body>
+</html>
